@@ -70,6 +70,9 @@ Produce a small offline loop:
 4. Run a second batch using those rubrics as extra supervision.
 5. Compare against a static-rubric baseline.
 
+The concrete WebShop-first task list is maintained in
+`docs/plans/webshop-todo-list.md`.
+
 ## Success Criteria
 
 - WebShop task success improves on held-out tasks.

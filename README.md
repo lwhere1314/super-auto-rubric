@@ -42,3 +42,6 @@ scripts/bootstrap_train_branch.sh
 
 The training branch keeps AgentGym and dr-tulu as untracked local checkouts in
 `external/` and records the replicated settings under `configs/`.
+
+The active WebShop-first execution list is in
+`docs/plans/webshop-todo-list.md`.
