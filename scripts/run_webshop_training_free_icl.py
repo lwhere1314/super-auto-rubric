@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -34,6 +35,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-steps", type=int, default=8)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--rubric-limit", type=int, default=5)
+    parser.add_argument(
+        "--api-concurrency",
+        type=int,
+        default=1,
+        help="Run independent episodes concurrently to overlap actor/critic API calls.",
+    )
     parser.add_argument("--synthetic", action="store_true")
     return parser.parse_args()
 
@@ -49,27 +56,27 @@ def main() -> int:
         api_key_env=args.api_key_env,
         base_url=args.api_base_url,
     )
-    policy = InContextRubricPolicy(
-        chat_client=chat_client,
-        actor_model=args.actor_model,
-        rubrics=rubrics,
-    )
-    judge = CriticRubricJudge(
-        chat_client=chat_client,
-        critic_model=args.critic_model,
-        rubrics=rubrics,
-    )
-
     if not args.synthetic:
         health_client = AgentGymWebShopClient(base_url=args.base_url)
         if not health_client.health():
             print(f"WebShop server is not healthy at {args.base_url}.", file=sys.stderr)
             return 3
 
-    results = []
-    for episode_id in range(args.episodes):
+    output_dir = Path(args.output_dir)
+
+    def run_one_episode(episode_id: int):
         client = SyntheticWebShopClient() if args.synthetic else AgentGymWebShopClient(base_url=args.base_url)
-        result = run_training_free_icl_episode(
+        policy = InContextRubricPolicy(
+            chat_client=chat_client,
+            actor_model=args.actor_model,
+            rubrics=rubrics,
+        )
+        judge = CriticRubricJudge(
+            chat_client=chat_client,
+            critic_model=args.critic_model,
+            rubrics=rubrics,
+        )
+        return run_training_free_icl_episode(
             client,
             policy,
             judge,
@@ -81,9 +88,51 @@ def main() -> int:
             critic_model=args.critic_model,
             rubric_version=Path(args.active_rubrics).stem,
         )
-        results.append(result)
 
-    metrics = save_training_free_results(Path(args.output_dir), results)
+    completed = {}
+    max_workers = max(1, args.api_concurrency)
+    if max_workers == 1:
+        for episode_id in range(args.episodes):
+            completed[episode_id] = run_one_episode(episode_id)
+            results = [completed[idx] for idx in sorted(completed)]
+            save_training_free_results(output_dir, results)
+            breakdown = completed[episode_id][1]
+            print(
+                "episode="
+                f"{episode_id + 1}/{args.episodes} "
+                f"task_reward={breakdown.task_reward:.3f} "
+                f"format_tool={breakdown.format_tool_validity_reward:.3f} "
+                f"critic_sum={breakdown.critic_rubric_judged_score_sum:.3f} "
+                f"combined={breakdown.combined_reward:.3f}",
+                file=sys.stderr,
+                flush=True,
+            )
+    else:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(run_one_episode, episode_id): episode_id
+                for episode_id in range(args.episodes)
+            }
+            for future in as_completed(futures):
+                episode_id = futures[future]
+                completed[episode_id] = future.result()
+                results = [completed[idx] for idx in sorted(completed)]
+                save_training_free_results(output_dir, results)
+                breakdown = completed[episode_id][1]
+                print(
+                    "episode="
+                    f"{episode_id + 1}/{args.episodes} "
+                    f"finished={len(completed)}/{args.episodes} "
+                    f"task_reward={breakdown.task_reward:.3f} "
+                    f"format_tool={breakdown.format_tool_validity_reward:.3f} "
+                    f"critic_sum={breakdown.critic_rubric_judged_score_sum:.3f} "
+                    f"combined={breakdown.combined_reward:.3f}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+
+    results = [completed[idx] for idx in sorted(completed)]
+    metrics = save_training_free_results(output_dir, results)
     print(json.dumps(metrics, indent=2, sort_keys=True))
     print(f"saved={Path(args.output_dir).resolve()}")
     return 0

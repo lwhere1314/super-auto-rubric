@@ -119,7 +119,8 @@ zsh -lc 'source ~/.bashrc 2>/dev/null || true; source ~/.zshrc 2>/dev/null || tr
   --seed 300 \
   --actor-model doubao-seed-2.0-mini \
   --critic-model kimi-k2.6 \
-  --api-base-url https://ark.cn-beijing.volces.com/api/plan/v3'
+  --api-base-url https://ark.cn-beijing.volces.com/api/plan/v3 \
+  --api-concurrency 5'
 ```
 
 Observed result from the first real WebShop run:
@@ -135,3 +136,48 @@ The actor produced valid tool calls, but the critic identified a critical error:
 the trajectory kept searching/paging without a purchase and repeated nearly
 identical progress-free actions. This is the intended training-free signal for
 the next ICL patch or validator pass.
+
+### Batched API Run
+
+The runner now supports episode-level API batching via `--api-concurrency`.
+Each episode remains sequential internally because WebShop observations depend
+on prior actions, but independent episodes run concurrently and overlap actor
+and critic API calls. The runner saves partial results after each episode
+finishes.
+
+Verified 10-episode batch:
+
+```sh
+zsh -lc 'source ~/.bashrc 2>/dev/null || true; source ~/.zshrc 2>/dev/null || true; \
+  PYTHONPATH=src SEED_AGENT_PLAN_API_KEY="$SEED_AGENT_PLAN_API_KEY" \
+  /Volumes/SSD/venvs/agentenv-webshop/bin/python \
+  scripts/run_webshop_training_free_icl.py \
+  --base-url http://127.0.0.1:36001 \
+  --active-rubrics artifacts/rubrics/baseline-real-active.jsonl \
+  --output-dir artifacts/trajectories/training-free-icl-real-n10-batched \
+  --episodes 10 \
+  --max-steps 6 \
+  --seed 700 \
+  --actor-model doubao-seed-2.0-mini \
+  --critic-model kimi-k2.6 \
+  --api-base-url https://ark.cn-beijing.volces.com/api/plan/v3 \
+  --api-concurrency 5'
+```
+
+N=10 result:
+
+- WebShop task reward mean: `0.0`; standard deviation: `0.0`.
+- Format/tool validity reward mean: `1.0`; invalid action rate: `0.0`.
+- Critic rubric score sum mean: `-2.3`; standard deviation: `0.6`.
+- Combined reward mean: `-1.3`; standard deviation: `0.6`.
+- Combined reward distribution: `-1.5` for 9 trajectories, `0.5` for 1
+  trajectory.
+- Negative critic triggers: navigation loop `10/10`, no satisfying purchase
+  `9/10`.
+
+Concrete benefit observed: the environment task reward collapsed all ten
+attempts to the same value, `0.0`, so it provided no ranking signal. The
+critic-augmented reward separated the failed trajectories by error severity and
+attached actionable labels. This makes the signal usable for filtering,
+reranking, prompt patching, or future training supervision even before task
+success improves.

@@ -14,6 +14,7 @@ webshop:
   episodes: 1
   max_steps: 6
   rubric_limit: 5
+  api_concurrency: 5
 
 reward:
   formula: R = WebShop task reward + format/tool validity reward + sum(active critic rubric judged scores)
