@@ -45,3 +45,12 @@ The training branch keeps AgentGym and dr-tulu as untracked local checkouts in
 
 The active WebShop-first execution list is in
 `docs/plans/webshop-todo-list.md`.
+
+For local Mac setup on the external SSD, see
+`docs/setup/mac-webshop-ssd.md`.
+
+Local non-CUDA checks can be run with:
+
+```sh
+PYTHONPATH=src python3 -m unittest discover -s tests -v
+```

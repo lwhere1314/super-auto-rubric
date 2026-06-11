@@ -11,6 +11,7 @@ imports:
   external_repos: configs/external_repos.yaml
   environment: configs/agentgym_webshop.yaml
   rubric_reward: configs/dr_tulu_rubric.yaml
+  static_rubrics: configs/static_webshop_rubrics.yaml
 
 batch_loop:
   baseline_batches: 1

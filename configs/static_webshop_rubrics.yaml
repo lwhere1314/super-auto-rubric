@@ -1,0 +1,28 @@
+# Static persistent WebShop rubrics used as the baseline comparator.
+version: static-webshop-v0
+rubrics:
+  - rubric_id: static_constraint_satisfaction
+    title: Constraint Satisfaction
+    polarity: positive
+    weight: 1.0
+    description: Final purchase should satisfy every explicit user constraint, including product type, attributes, options, and price.
+  - rubric_id: static_evidence_before_purchase
+    title: Evidence Before Purchase
+    polarity: positive
+    weight: 0.8
+    description: Agent should inspect enough product evidence before committing to buy.
+  - rubric_id: static_query_preserves_constraints
+    title: Query Preserves Constraints
+    polarity: positive
+    weight: 0.7
+    description: Search queries should preserve the important terms and constraints from the instruction.
+  - rubric_id: static_no_navigation_loop
+    title: No Navigation Loop
+    polarity: negative
+    weight: -0.5
+    description: Penalize repeated searches or clicks that do not gather new information.
+  - rubric_id: static_no_premature_purchase
+    title: No Premature Purchase
+    polarity: negative
+    weight: -0.8
+    description: Penalize buying before required options and constraints have been checked.

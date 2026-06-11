@@ -15,51 +15,67 @@ stress tests after the WebShop loop works end to end.
 
 ## M1: WebShop Environment Smoke Test
 
-- [ ] Create or document the Python 3.8 WebShop environment.
+- [x] Create or document the Python 3.8 WebShop environment.
 - [ ] Run AgentGym WebShop setup and search index generation.
 - [ ] Launch the WebShop server on port `36001`.
 - [ ] Run one scripted or random-policy episode.
 - [ ] Confirm observations, available actions, rewards, and done flags are emitted.
 - [ ] Save the smoke-test trace under `artifacts/trajectories/smoke/`.
 
+Status: SSD install paths and script are ready in
+`docs/setup/mac-webshop-ssd.md` and `scripts/create_webshop_conda_env.sh`, but
+the actual conda create step is currently blocked by network reset/SSL EOF
+errors while downloading package metadata.
+
 ## M2: Trajectory Store
 
-- [ ] Define a JSONL trajectory schema for WebShop episodes.
-- [ ] Capture instruction text, observations, actions, available actions, rewards,
+- [x] Define a JSONL trajectory schema for WebShop episodes.
+- [x] Capture instruction text, observations, actions, available actions, rewards,
   done flags, and environment state.
-- [ ] Preserve raw traces separately from derived annotations.
-- [ ] Add batch metadata: model, prompt version, rubric version, seed, session id,
+- [x] Preserve raw traces separately from derived annotations.
+- [x] Add batch metadata: model, prompt version, rubric version, seed, session id,
   and timestamp.
-- [ ] Add a loader that can stream failed trajectories for weakness mining.
+- [x] Add a loader that can stream failed trajectories for weakness mining.
 
 ## M3: Baseline Batch Runner
 
-- [ ] Implement a small `bench_size` runner using AgentGym WebShop.
-- [ ] Start with a cheap deterministic slice before full randomized batches.
-- [ ] Record success rate, average reward, step count, invalid-action rate, and
+- [x] Implement a small `bench_size` runner using AgentGym WebShop.
+- [x] Start with a cheap deterministic slice before full randomized batches.
+- [x] Record success rate, average reward, step count, invalid-action rate, and
   loop rate.
-- [ ] Save per-episode traces and aggregate metrics.
-- [ ] Produce a static-rubric baseline for later comparison.
+- [x] Save per-episode traces and aggregate metrics.
+- [x] Produce a static-rubric baseline for later comparison.
+
+Status: runner is implemented for both AgentGym HTTP WebShop and synthetic
+offline checks. Static persistent rubrics are defined in
+`configs/static_webshop_rubrics.yaml`, and baseline trajectories default to
+`rubric_version=static-webshop-v0`.
 
 ## M4: Weakness Mining
 
-- [ ] Segment trajectories into search, inspect, compare, decide, and purchase
+- [x] Segment trajectories into search, inspect, compare, decide, and purchase
   phases.
-- [ ] Identify the earliest decisive mistake in failed trajectories.
-- [ ] Tag failures with the initial taxonomy: query drift, attribute neglect,
+- [x] Identify the earliest decisive mistake in failed trajectories.
+- [x] Tag failures with the initial taxonomy: query drift, attribute neglect,
   premature purchase, observation over-trust, navigation loop, and proxy hacking.
-- [ ] Extract evidence spans from observations and actions.
-- [ ] Cluster similar weakness candidates before adding them to the pool.
+- [x] Extract evidence spans from observations and actions.
+- [x] Cluster similar weakness candidates before adding them to the pool.
+
+Status: initial heuristic miner is implemented and covered by synthetic tests.
+The taxonomy should be tightened after real WebShop traces arrive.
 
 ## M5: Rubric Pool And Buffer
 
-- [ ] Implement RLER-style active rubric entries with source weakness ids,
+- [x] Implement RLER-style active rubric entries with source weakness ids,
   evidence trajectory ids, polarity, severity, support count, and last triggered
   batch.
-- [ ] Add merge, decay, retire, and quarantine operations.
-- [ ] Generate both positive rubrics and negative rubrics.
-- [ ] Limit active adaptive rubrics to the configured `max_active_rubrics`.
-- [ ] Persist active and retired rubrics as JSONL artifacts.
+- [x] Add merge, decay, retire, and quarantine operations.
+- [x] Generate both positive rubrics and negative rubrics.
+- [x] Limit active adaptive rubrics to the configured `max_active_rubrics`.
+- [x] Persist active and retired rubrics as JSONL artifacts.
+
+Status: positive and negative rubric generation are implemented and covered by
+synthetic tests. Real WebShop traces will be used to tune wording and weights.
 
 ## M6: Training Integration
 
