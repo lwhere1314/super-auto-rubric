@@ -112,7 +112,19 @@ class AgentGymWebShopClient:
             timeout=self.timeout_seconds,
         )
         response.raise_for_status()
-        return dict(response.json())
+        body = dict(response.json())
+        if (
+            body.get("url") == "url"
+            and body.get("html") == "html"
+            and body.get("instruction_text") == "instruction_text"
+        ):
+            body = {
+                "url": f"{self.base_url.rstrip('/')}/env/{env_idx}",
+                "html": self.observation(),
+                "instruction_text": self.instruction_text(),
+                "source": "agentgym-state-fallback",
+            }
+        return body
 
     def step(self, action: str) -> dict[str, Any]:
         env_idx = self._require_env()

@@ -1,13 +1,14 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from super_auto_rubric.webshop.baseline import (
     run_episode,
     save_batch_results,
     summarize_episode_results,
 )
-from super_auto_rubric.webshop.client import SyntheticWebShopClient
+from super_auto_rubric.webshop.client import AgentGymWebShopClient, SyntheticWebShopClient
 from super_auto_rubric.webshop.policies import ScriptedWebShopPolicy
 from super_auto_rubric.webshop.rubric_pool import RubricPool
 from super_auto_rubric.webshop.trajectory import load_trajectories
@@ -15,6 +16,44 @@ from super_auto_rubric.webshop.weakness import mine_batch
 
 
 class WebShopLocalLoopTest(unittest.TestCase):
+    def test_agentgym_state_fallback_repairs_placeholder_response(self) -> None:
+        class Response:
+            def __init__(self, payload):
+                self.payload = payload
+
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self):
+                return self.payload
+
+        responses = iter(
+            [
+                Response(
+                    {
+                        "url": "url",
+                        "html": "html",
+                        "instruction_text": "instruction_text",
+                    }
+                ),
+                Response("WebShop [SEP] Search"),
+                Response("Instruction: Find a green mug."),
+            ]
+        )
+        client = AgentGymWebShopClient(base_url="http://127.0.0.1:36001")
+        client.env_idx = 123
+
+        with patch(
+            "super_auto_rubric.webshop.client.requests.get",
+            side_effect=lambda *args, **kwargs: next(responses),
+        ):
+            state = client.state()
+
+        self.assertEqual(state["url"], "http://127.0.0.1:36001/env/123")
+        self.assertEqual(state["html"], "WebShop [SEP] Search")
+        self.assertEqual(state["instruction_text"], "Instruction: Find a green mug.")
+        self.assertEqual(state["source"], "agentgym-state-fallback")
+
     def test_synthetic_episode_persists_reloadable_trajectory(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)

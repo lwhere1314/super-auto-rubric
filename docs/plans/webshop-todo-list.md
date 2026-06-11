@@ -16,16 +16,17 @@ stress tests after the WebShop loop works end to end.
 ## M1: WebShop Environment Smoke Test
 
 - [x] Create or document the Python 3.8 WebShop environment.
-- [ ] Run AgentGym WebShop setup and search index generation.
-- [ ] Launch the WebShop server on port `36001`.
-- [ ] Run one scripted or random-policy episode.
-- [ ] Confirm observations, available actions, rewards, and done flags are emitted.
-- [ ] Save the smoke-test trace under `artifacts/trajectories/smoke/`.
+- [x] Run AgentGym WebShop setup and search index generation.
+- [x] Launch the WebShop server on port `36001`.
+- [x] Run one scripted or random-policy episode.
+- [x] Confirm observations, available actions, rewards, and done flags are emitted.
+- [x] Save the smoke-test trace under `artifacts/trajectories/smoke/`.
 
-Status: SSD install paths and script are ready in
-`docs/setup/mac-webshop-ssd.md` and `scripts/create_webshop_conda_env.sh`, but
-the actual conda create step is currently blocked by network reset/SSL EOF
-errors while downloading package metadata.
+Status: local Mac smoke now runs from an SSD-backed Python 3.8 venv at
+`/Volumes/SSD/venvs/agentenv-webshop`, reusing the existing TAPE conda
+interpreter for torch/numpy and storing pip cache, WebShop resources, and
+Lucene indexes on `/Volumes/SSD`. The live smoke trace was generated under
+`artifacts/trajectories/smoke-real/`.
 
 ## M2: Trajectory Store
 
@@ -49,7 +50,8 @@ errors while downloading package metadata.
 Status: runner is implemented for both AgentGym HTTP WebShop and synthetic
 offline checks. Static persistent rubrics are defined in
 `configs/static_webshop_rubrics.yaml`, and baseline trajectories default to
-`rubric_version=static-webshop-v0`.
+`rubric_version=static-webshop-v0`. A three-episode real AgentGym WebShop batch
+was generated under `artifacts/trajectories/baseline-real/`.
 
 ## M4: Weakness Mining
 
@@ -62,7 +64,9 @@ offline checks. Static persistent rubrics are defined in
 - [x] Cluster similar weakness candidates before adding them to the pool.
 
 Status: initial heuristic miner is implemented and covered by synthetic tests.
-The taxonomy should be tightened after real WebShop traces arrive.
+It also mined the real three-episode WebShop batch, producing navigation-loop,
+attribute-neglect, and query-drift candidates under
+`artifacts/annotations/baseline-real-weaknesses.jsonl`.
 
 ## M5: Rubric Pool And Buffer
 
@@ -75,7 +79,9 @@ The taxonomy should be tightened after real WebShop traces arrive.
 - [x] Persist active and retired rubrics as JSONL artifacts.
 
 Status: positive and negative rubric generation are implemented and covered by
-synthetic tests. Real WebShop traces will be used to tune wording and weights.
+synthetic tests. The real WebShop batch produced an active adaptive pool under
+`artifacts/rubrics/baseline-real-active.jsonl` and retired overflow entries
+under `artifacts/rubrics/baseline-real-retired.jsonl`.
 
 ## M6: Training Integration
 

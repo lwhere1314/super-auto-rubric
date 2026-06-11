@@ -54,3 +54,7 @@ Local non-CUDA checks can be run with:
 ```sh
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
+
+The current Mac path is intentionally environment-only: it can run WebShop
+smoke tests, trajectory collection, weakness mining, and rubric-buffer updates.
+Actual model training should move to the Linux/CUDA 4090 machine.

@@ -84,6 +84,12 @@ def _short_evidence(step: TrajectoryStep, field: str, text: str, limit: int = 24
     return EvidenceSpan(step_index=step.step_index, field=field, text=compact[:limit])
 
 
+def _strip_search_action(action: str) -> str:
+    if action.startswith("search[") and action.endswith("]"):
+        return action[len("search[") : -1]
+    return action
+
+
 def _find_repeated_actions(trajectory: Trajectory) -> list[WeaknessCandidate]:
     candidates: list[WeaknessCandidate] = []
     seen: dict[str, TrajectoryStep] = {}
@@ -175,7 +181,7 @@ def _find_query_drift(trajectory: Trajectory) -> list[WeaknessCandidate]:
     for step in trajectory.steps:
         if not step.action.startswith("search["):
             continue
-        query = step.action.removeprefix("search[").removesuffix("]").lower()
+        query = _strip_search_action(step.action).lower()
         covered = {term for term in required if term.split("<", 1)[0] in query}
         if len(covered) < max(1, len(required) // 3):
             return [
