@@ -36,8 +36,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--episodes", type=int, default=1)
     parser.add_argument("--max-steps", type=int, default=8)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--session-offset",
+        type=int,
+        default=0,
+        help="Start WebShop session ids from this offset for held-out task slices.",
+    )
     parser.add_argument("--rubric-limit", type=int, default=5)
     parser.add_argument("--feedback-limit", type=int, default=8)
+    parser.add_argument(
+        "--disable-recent-actions",
+        action="store_true",
+        help="Ablation: do not inject recent action history into the actor prompt.",
+    )
     parser.add_argument(
         "--api-concurrency",
         type=int,
@@ -79,6 +90,7 @@ def main() -> int:
             actor_model=args.actor_model,
             rubrics=rubrics,
             feedback_hints=feedback_hints,
+            include_recent_actions=not args.disable_recent_actions,
         )
         judge = CriticRubricJudge(
             chat_client=chat_client,
@@ -91,7 +103,7 @@ def main() -> int:
             judge,
             split="training-free-icl",
             max_steps=args.max_steps,
-            session_id=episode_id,
+            session_id=args.session_offset + episode_id,
             seed=args.seed + episode_id,
             actor_model=args.actor_model,
             critic_model=args.critic_model,

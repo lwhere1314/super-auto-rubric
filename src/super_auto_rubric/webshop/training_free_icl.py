@@ -221,12 +221,14 @@ class InContextRubricPolicy:
         actor_model: str,
         rubrics: list[RubricEntry],
         feedback_hints: list[FeedbackHint] | None = None,
+        include_recent_actions: bool = True,
         max_observation_chars: int = 4000,
     ) -> None:
         self.chat_client = chat_client
         self.actor_model = actor_model
         self.rubrics = rubrics
         self.feedback_hints = feedback_hints or []
+        self.include_recent_actions = include_recent_actions
         self.max_observation_chars = max_observation_chars
         self.fallback = ScriptedWebShopPolicy()
         self.recent_actions: list[str] = []
@@ -319,7 +321,20 @@ class InContextRubricPolicy:
             "has_search_bar": bool(available_actions.get("has_search_bar")),
             "clickables": clickables[:80],
         }
-        recent_actions = self.recent_actions[-6:]
+        recent_actions = self.recent_actions[-6:] if self.include_recent_actions else []
+        recent_action_guidance = (
+            "Avoid repeating recent actions unless the observation clearly changed. If you have inspected a "
+            "plausible product and Buy Now is available, choose required options and move "
+            "toward purchase instead of going back or opening the same details page again."
+            if self.include_recent_actions
+            else "Recent action history is not provided in this ablation."
+        )
+        feedback_guidance = (
+            "If a recent action appears in the allowed clickables again, prefer a different action "
+            "that gathers new evidence or completes the purchase.\n\n"
+            if self.include_recent_actions
+            else "\n\n"
+        )
         return [
             {
                 "role": "system",
@@ -329,10 +344,7 @@ class InContextRubricPolicy:
                     "reward + active critic rubric judged scores. Return JSON only with keys "
                     "`action`, `rationale`, and `rubric_focus`. Valid actions are `search[query]` "
                     "when a search bar is available, or `click[exact clickable text]` using one of "
-                    "the provided clickables. Do not invent tools or extra text. Avoid repeating "
-                    "recent actions unless the observation clearly changed. If you have inspected a "
-                    "plausible product and Buy Now is available, choose required options and move "
-                    "toward purchase instead of going back or opening the same details page again."
+                    f"the provided clickables. Do not invent tools or extra text. {recent_action_guidance}"
                 ),
             },
             {
@@ -346,8 +358,8 @@ class InContextRubricPolicy:
                     f"Meta-harness feedback from prior low-reward attempts:\n{feedback_text}\n\n"
                     "Use the feedback as counterfactual guidance: if an action pattern was penalized before, "
                     "choose a different search path or inspect a plausible product instead of repeating it. "
-                    "If a recent action appears in the allowed clickables again, prefer a different action "
-                    "that gathers new evidence or completes the purchase.\n\n"
+                    + feedback_guidance
+                    +
                     "Return JSON like: "
                     '{"action":"search[green mug]","rationale":"...","rubric_focus":["rubric_id"],'
                     '"feedback_focus":["feedback_id"]}'

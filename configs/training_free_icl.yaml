@@ -9,14 +9,15 @@ api:
 
 webshop:
   base_url: http://127.0.0.1:36001
-  active_rubrics: artifacts/rubrics/baseline-real-active.jsonl
-  feedback_memory: artifacts/feedback/meta-harness-feedback-n10.jsonl
-  output_dir: artifacts/trajectories/training-free-icl-real
-  episodes: 1
+  active_rubrics: artifacts/rubrics/webshop-agentdebug-plus-baseline-active.jsonl
+  feedback_memory: artifacts/feedback/webshop-agentdebug-plus-meta-feedback.jsonl
+  output_dir: artifacts/trajectories/heldout100-agentdebug-feedback-history
+  episodes: 100
   max_steps: 6
-  rubric_limit: 5
-  feedback_limit: 8
-  api_concurrency: 5
+  session_offset: 100
+  rubric_limit: 15
+  feedback_limit: 22
+  api_concurrency: 8
 
 reward:
   formula: R = WebShop task reward + format/tool validity reward + sum(active critic rubric judged scores)

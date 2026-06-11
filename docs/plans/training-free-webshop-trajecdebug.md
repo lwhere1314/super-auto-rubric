@@ -256,3 +256,112 @@ The useful conclusion is not just that the scalar reward improved. The more
 important result is causal: critic feedback needed to be grounded in the
 actor's current action history before the small actor changed its search path
 and progressed to purchase.
+
+### AgentDebug WebShop Labels
+
+The local AgentDebug AgentErrorBench download contains 50 WebShop labels,
+50 GAIA labels, and 100 ALFWorld labels. The WebShop labels are useful as a
+human annotated seed for critic-error taxonomy and feedback memory.
+
+Generated assets:
+
+```sh
+/Volumes/SSD/venvs/agentenv-webshop/bin/python \
+  scripts/build_agentdebug_webshop_assets.py \
+  --labels-zip /Users/hugo/Downloads/Label-20260611T171105Z-3-001.zip \
+  --summary-output artifacts/agentdebug/webshop_label_summary.json \
+  --feedback-output artifacts/feedback/agentdebug-webshop-feedback.jsonl \
+  --rubrics-output artifacts/rubrics/agentdebug-webshop-active.jsonl \
+  --merge-feedback artifacts/feedback/meta-harness-feedback-n10.jsonl \
+  --merged-feedback-output artifacts/feedback/webshop-agentdebug-plus-meta-feedback.jsonl \
+  --merge-rubrics artifacts/rubrics/baseline-real-active.jsonl \
+  --merged-rubrics-output artifacts/rubrics/webshop-agentdebug-plus-baseline-active.jsonl
+```
+
+WebShop label distribution:
+
+| Module | Count |
+| --- | ---: |
+| plan | `19` |
+| memory | `15` |
+| reflection | `9` |
+| system | `5` |
+| action | `2` |
+
+Most frequent WebShop failure types:
+
+| Failure Type | Count |
+| --- | ---: |
+| `plan.inefficient_plan` | `14` |
+| `memory.hallucination` | `8` |
+| `reflection.progress_misjudge` | `7` |
+| `memory.over_simplification` | `6` |
+| `plan.constraint_ignorance` | `5` |
+
+This supports the current WebShop focus: tool-format errors are not the main
+bottleneck. The dominant failures are repeated or near-duplicate searches,
+forgetting visible candidates, judging that no relevant products exist when
+there are plausible options, and over-exploring after a plausible product page
+is already open.
+
+### Held-Out 100-AgentDebug Run
+
+The 100-sample evaluation used sessions `100..199`, `max_steps=6`,
+`doubao-seed-2.0-mini` as actor, `kimi-k2.6` as critic, and the same combined
+AgentDebug plus mined active rubrics for both conditions. The only main
+condition difference is whether the actor receives the merged AgentDebug plus
+meta-harness feedback memory.
+
+Run directories:
+
+- Baseline: `artifacts/trajectories/heldout100-agentdebug-rubrics-recent`
+- Feedback: `artifacts/trajectories/heldout100-agentdebug-feedback-history`
+- Analysis: `artifacts/analysis/heldout100-agentdebug-feedback-comparison.json`
+
+Summary:
+
+| Condition | Success | Avg Task Reward | Avg Critic Sum | Avg Combined | Buy Episode Rate | Partial Reward Rate | Repeated Action Rate |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Rubrics + recent actions | `0.17` | `0.222` | `-2.641` | `-1.419` | `0.25` | `0.08` | `0.078` |
+| Rubrics + feedback + recent actions | `0.19` | `0.280` | `-1.424` | `-0.144` | `0.35` | `0.15` | `0.031` |
+
+Paired comparison over the same 100 sessions:
+
+- Average task reward delta: `+0.058`; bootstrap 95% CI
+  `[-0.014, +0.132]`.
+- Success delta: `+0.02`; bootstrap 95% CI `[-0.04, +0.09]`.
+- Critic sum delta: `+1.217`.
+- Repeated action rate delta: `-0.045`.
+- Task reward improved on `17` sessions, worsened on `8`, unchanged on `75`.
+- Success was gained on `7` sessions and lost on `5`.
+
+Action distribution moved in the intended direction:
+
+| Condition | Search | Navigation | Product/Option | Details | Buy |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Baseline | `155` | `177` | `181` | `29` | `25` |
+| Feedback | `133` | `122` | `219` | `44` | `35` |
+
+Interpretation:
+
+- The benefit is real but still directional at `N=100`, not statistically
+  decisive. The confidence intervals cross zero.
+- Feedback memory increases buying and partial completion, reduces loops, and
+  shifts behavior from repeated search/navigation toward product and option
+  interactions.
+- The biggest positive cases are direct rescues from `0.0` to `1.0`, usually
+  with short chains such as `search -> product -> option -> option -> buy now`.
+- Regressions often show over-checking `features` or using `< prev>` after the
+  right options were already selected. This suggests the next prompt patch
+  should make "Buy Now after required options are selected" higher priority
+  than optional details inspection.
+
+Recommended next change:
+
+- Keep AgentDebug labels as taxonomy and rubric seeds.
+- Reduce feedback prompt crowding by selecting feedback top-k based on current
+  state: search page gets plan/memory feedback; product page gets
+  progress-misjudge and buy-now feedback.
+- Add a lightweight product-page validator: if required options are selected
+  and `Buy Now` is visible, prefer buying unless a hard constraint is still
+  explicitly unknown.
