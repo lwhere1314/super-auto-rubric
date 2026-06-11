@@ -1,0 +1,27 @@
+branch: training-free/webshop-trajecdebug
+mode: in_context_critic_rubric_injection
+
+api:
+  base_url: https://ark.cn-beijing.volces.com/api/plan/v3
+  api_key_env: SEED_AGENT_PLAN_API_KEY
+  actor_model: doubao-seed-2.0-mini
+  critic_model: kimi-k2.6
+
+webshop:
+  base_url: http://127.0.0.1:36001
+  active_rubrics: artifacts/rubrics/baseline-real-active.jsonl
+  output_dir: artifacts/trajectories/training-free-icl-real
+  episodes: 1
+  max_steps: 6
+  rubric_limit: 5
+
+reward:
+  formula: R = WebShop task reward + format/tool validity reward + sum(active critic rubric judged scores)
+  task_reward_source: AgentGym WebShop environment reward
+  format_tool_validity_reward:
+    range: [0.0, 1.0]
+    definition: Average per-step score, 0.5 for parseable JSON action and 0.5 for valid WebShop tool/action.
+  active_critic_rubric_judged_scores:
+    judge_model: kimi-k2.6
+    score_range: [-1.0, 1.0]
+    contribution: score * abs(rubric_weight)
