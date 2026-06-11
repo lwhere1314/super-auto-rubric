@@ -10,10 +10,12 @@ api:
 webshop:
   base_url: http://127.0.0.1:36001
   active_rubrics: artifacts/rubrics/baseline-real-active.jsonl
+  feedback_memory: artifacts/feedback/meta-harness-feedback-n10.jsonl
   output_dir: artifacts/trajectories/training-free-icl-real
   episodes: 1
   max_steps: 6
   rubric_limit: 5
+  feedback_limit: 8
   api_concurrency: 5
 
 reward:
@@ -26,3 +28,16 @@ reward:
     judge_model: kimi-k2.6
     score_range: [-1.0, 1.0]
     contribution: score * abs(rubric_weight)
+
+meta_harness:
+  feedback_source: critic-scored trajectories
+  feedback_shape:
+    - source trajectory id
+    - source critic rubric ids
+    - penalized action pattern
+    - lesson explaining why the action pattern received low reward
+    - suggested alternative search or purchase strategy
+  actor_context:
+    include_recent_actions: true
+    include_feedback_memory: true
+    purpose: Tell the small actor which action patterns previously failed so it chooses a different search or purchase path.

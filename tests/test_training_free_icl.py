@@ -4,11 +4,14 @@ import unittest
 from super_auto_rubric.webshop.rubric_pool import RubricEntry
 from super_auto_rubric.webshop.training_free_icl import (
     CriticRubricJudge,
+    FeedbackHint,
     InContextRubricPolicy,
+    build_feedback_hints_from_trajectories,
     is_action_tool_valid,
     run_training_free_icl_episode,
 )
 from super_auto_rubric.webshop.client import SyntheticWebShopClient
+from super_auto_rubric.webshop.trajectory import Trajectory, TrajectoryStep
 
 
 class FakeCompletion:
@@ -81,6 +84,73 @@ class TrainingFreeICLTest(unittest.TestCase):
         self.assertEqual(decision.action, "search[green mug.]")
         self.assertFalse(decision.parse_ok)
         self.assertTrue(decision.tool_valid)
+
+    def test_feedback_hints_are_built_and_injected_into_prompt(self):
+        trajectory = Trajectory.start(
+            instruction_text="Find a washable green mug.",
+            split="test",
+            model="actor",
+            policy="policy",
+            prompt_version="prompt",
+            rubric_version="rubric",
+        )
+        for idx, action in enumerate(["search[green mug]", "click[next >]", "click[next >]"]):
+            trajectory.add_step(
+                TrajectoryStep(
+                    step_index=idx,
+                    observation_before="Results",
+                    available_actions={"has_search_bar": False, "clickables": ["next >"]},
+                    action=action,
+                    reward=0.0,
+                    done=False,
+                    observation_after="Results",
+                )
+            )
+        trajectory.metadata["training_free_reward"] = {
+            "critic_scores": [
+                {
+                    "rubric_id": "rubric_loop",
+                    "contribution": -0.5,
+                    "explanation": "Agent repeated nearly identical paging without new evidence.",
+                },
+                {
+                    "rubric_id": "rubric_purchase",
+                    "contribution": -1.0,
+                    "explanation": "No purchase made; constraints not satisfied.",
+                },
+            ]
+        }
+
+        hints = build_feedback_hints_from_trajectories([trajectory], max_hints=4)
+
+        self.assertGreaterEqual(len(hints), 1)
+        self.assertTrue(any("search path" in hint.suggested_strategy for hint in hints))
+
+        policy = InContextRubricPolicy(
+            chat_client=FakeChatClient([]),
+            actor_model="actor",
+            rubrics=[rubric_entry()],
+            feedback_hints=[
+                FeedbackHint(
+                    feedback_id="feedback_test",
+                    source_trajectory_id="traj",
+                    source_rubric_ids=["rubric_loop"],
+                    trigger="Repeated paging was penalized.",
+                    avoid_actions=["click[next >]"],
+                    lesson="Repeating next got low reward.",
+                    suggested_strategy="Change search terms or inspect a plausible item.",
+                    severity=1.0,
+                )
+            ],
+        )
+        messages = policy._messages(
+            "Observation",
+            {"has_search_bar": True, "clickables": ["search"]},
+            "Find a green mug.",
+        )
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn("feedback_test", prompt)
+        self.assertIn("Repeating next got low reward", prompt)
 
     def test_training_free_reward_combines_task_validity_and_critic_scores(self):
         rubric = rubric_entry()

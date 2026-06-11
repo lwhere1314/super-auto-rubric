@@ -14,6 +14,7 @@ from super_auto_rubric.webshop.seed_plan import SeedPlanChatClient
 from super_auto_rubric.webshop.training_free_icl import (
     CriticRubricJudge,
     InContextRubricPolicy,
+    load_feedback_hints,
     load_active_rubrics,
     run_training_free_icl_episode,
     save_training_free_results,
@@ -30,11 +31,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--actor-model", default="doubao-seed-2.0-mini")
     parser.add_argument("--critic-model", default="kimi-k2.6")
     parser.add_argument("--active-rubrics", default="artifacts/rubrics/baseline-real-active.jsonl")
+    parser.add_argument("--feedback-memory", default=None)
     parser.add_argument("--output-dir", default="artifacts/trajectories/training-free-icl")
     parser.add_argument("--episodes", type=int, default=1)
     parser.add_argument("--max-steps", type=int, default=8)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--rubric-limit", type=int, default=5)
+    parser.add_argument("--feedback-limit", type=int, default=8)
     parser.add_argument(
         "--api-concurrency",
         type=int,
@@ -51,6 +54,11 @@ def main() -> int:
     if not rubrics:
         print(f"No active rubrics found at {args.active_rubrics}.", file=sys.stderr)
         return 2
+    feedback_hints = (
+        load_feedback_hints(Path(args.feedback_memory), limit=args.feedback_limit)
+        if args.feedback_memory
+        else []
+    )
 
     chat_client = SeedPlanChatClient.from_env(
         api_key_env=args.api_key_env,
@@ -70,6 +78,7 @@ def main() -> int:
             chat_client=chat_client,
             actor_model=args.actor_model,
             rubrics=rubrics,
+            feedback_hints=feedback_hints,
         )
         judge = CriticRubricJudge(
             chat_client=chat_client,

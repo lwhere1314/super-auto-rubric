@@ -181,3 +181,78 @@ critic-augmented reward separated the failed trajectories by error severity and
 attached actionable labels. This makes the signal usable for filtering,
 reranking, prompt patching, or future training supervision even before task
 success improves.
+
+### Meta-Harness Feedback Pass
+
+The next pass converts critic errors into reusable in-context feedback. This is
+the meta-harness behavior we want: after a critic says a trajectory received low
+reward because of repeated searches, paging, or no satisfying purchase, the next
+actor prompt gets an explicit warning that those action patterns are bad and a
+short alternative strategy.
+
+Build feedback memory from the N=10 critic-scored batch:
+
+```sh
+PYTHONPATH=src /Volumes/SSD/venvs/agentenv-webshop/bin/python \
+  scripts/build_webshop_meta_feedback.py \
+  artifacts/trajectories/training-free-icl-real-n10-batched \
+  --output artifacts/feedback/meta-harness-feedback-n10.jsonl \
+  --max-hints 12
+```
+
+The generated feedback entries include:
+
+- `trigger`: what the critic penalized.
+- `avoid_actions`: concrete action patterns from failed trajectories.
+- `lesson`: why those actions got low reward.
+- `suggested_strategy`: what to do instead.
+
+Run with active rubrics plus feedback memory:
+
+```sh
+zsh -lc 'source ~/.bashrc 2>/dev/null || true; source ~/.zshrc 2>/dev/null || true; \
+  PYTHONPATH=src SEED_AGENT_PLAN_API_KEY="$SEED_AGENT_PLAN_API_KEY" \
+  /Volumes/SSD/venvs/agentenv-webshop/bin/python \
+  scripts/run_webshop_training_free_icl.py \
+  --base-url http://127.0.0.1:36001 \
+  --active-rubrics artifacts/rubrics/baseline-real-active.jsonl \
+  --feedback-memory artifacts/feedback/meta-harness-feedback-n10.jsonl \
+  --feedback-limit 8 \
+  --output-dir artifacts/trajectories/training-free-icl-real-n10-feedback-history \
+  --episodes 10 \
+  --max-steps 6 \
+  --seed 700 \
+  --actor-model doubao-seed-2.0-mini \
+  --critic-model kimi-k2.6 \
+  --api-base-url https://ark.cn-beijing.volces.com/api/plan/v3 \
+  --api-concurrency 5'
+```
+
+This pass also injects recent actions into the actor prompt. That mattered:
+feedback memory alone changed search behavior but did not improve success,
+because the actor still repeated product-page options or detail clicks. Recent
+actions let the prompt say, concretely, "you just did this; choose a different
+action that gathers evidence or completes purchase."
+
+Comparison on the same 10 WebShop sessions:
+
+| Condition | Success Rate | Avg Task Reward | Avg Critic Sum | Avg Combined Reward | Loop Rate |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Rubrics only | `0.0` | `0.0` | `-2.3` | `-1.3` | `0.2667` |
+| Rubrics + feedback memory | `0.0` | `0.0` | `-2.4` | `-1.4` | `0.2167` |
+| Rubrics + feedback memory + recent actions | `0.4` | `0.4` | `-0.51` | `0.89` | `0.0714` |
+
+Behavioral shift:
+
+- Rubrics only: mostly repeated `search`, `next`, and `back to search`; no
+  purchases.
+- Feedback memory only: more product clicks and detail checks, but still no
+  purchases.
+- Feedback memory plus recent actions: four trajectories completed with
+  `Buy Now`, including successful option selection such as
+  `search -> product -> color -> size -> buy now`.
+
+The useful conclusion is not just that the scalar reward improved. The more
+important result is causal: critic feedback needed to be grounded in the
+actor's current action history before the small actor changed its search path
+and progressed to purchase.
