@@ -1,0 +1,28 @@
+# Local dependency checkouts.
+external/
+
+# Python and tooling caches.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Local environments and secrets.
+.env
+.venv/
+venv/
+env/
+
+# Experiment outputs.
+artifacts/
+data/generated/
+outputs/
+runs/
+wandb/
+
+# Large model/checkpoint artifacts.
+*.ckpt
+*.pt
+*.pth
+*.safetensors

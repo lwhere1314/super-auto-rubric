@@ -31,3 +31,30 @@ signals, and fed back into later runs.
 - `train/webshop-rubric-evolution`: training-based rubric evolution for WebShop.
 - `training-free/webshop-trajecdebug`: training-free trajectory diagnosis and
   rubric rewriting for WebShop.
+
+## Training Branch Setup
+
+On `train/webshop-rubric-evolution`, run:
+
+```sh
+scripts/bootstrap_train_branch.sh
+```
+
+The training branch keeps AgentGym and dr-tulu as untracked local checkouts in
+`external/` and records the replicated settings under `configs/`.
+
+The active WebShop-first execution list is in
+`docs/plans/webshop-todo-list.md`.
+
+For local Mac setup on the external SSD, see
+`docs/setup/mac-webshop-ssd.md`.
+
+Local non-CUDA checks can be run with:
+
+```sh
+PYTHONPATH=src python3 -m unittest discover -s tests -v
+```
+
+The current Mac path is intentionally environment-only: it can run WebShop
+smoke tests, trajectory collection, weakness mining, and rubric-buffer updates.
+Actual model training should move to the Linux/CUDA 4090 machine.

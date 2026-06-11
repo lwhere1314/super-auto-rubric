@@ -1,0 +1,103 @@
+# Settings mirrored from dr-tulu's rubric reward and GRPO defaults.
+source:
+  repo: dr_tulu
+  commit: 9d7b037
+  root: external/dr-tulu
+  open_instruct_root: external/dr-tulu/rl/open-instruct
+  reward_module: open_instruct.search_rewards.longform_rubric_rewards
+  rubric_utils_module: open_instruct.search_rewards.utils.rubric_utils
+  clustering_module: open_instruct.search_rewards.analysis.hierarchical_rubric_clustering
+
+judge:
+  rubric_judge_model_env: RUBRIC_JUDGE_MODEL
+  default_rubric_judge_model: gpt-4.1
+  llm_judge_model: azure/gpt-4o-mini-standard
+  llm_judge_max_tokens: 2048
+  llm_judge_temperature: 1.0
+  llm_judge_timeout_seconds: 60
+  llm_judge_max_context_length: 2048
+  litellm_max_concurrent_calls_env: LITELLM_MAX_CONCURRENT_CALLS
+  litellm_max_concurrent_calls: 256
+  json_score_schema:
+    score_min: 0
+    score_max: 2
+    normalized_min: 0.0
+    normalized_max: 1.0
+
+reward:
+  function: compute_weighted_rubric_reward_with_citation_and_format_reward
+  components:
+    with_citation:
+      rubric_reward: 0.5
+      citation_reward: 0.2
+      format_reward: 0.2
+      num_search_turns_reward: 0.1
+    without_citation:
+      rubric_reward: 0.6
+      format_reward: 0.2
+      num_search_turns_reward: 0.2
+  use_general_rubric: false
+  use_likert_rubric: false
+  no_citation_reward: true
+  log_values:
+    - rubric_reward
+    - persistent_rubric_reward
+    - adaptive_rubric_reward
+    - rubric_scores_by_title
+    - per_rubric_rewards
+    - format_reward
+    - num_search_turns_reward
+
+grpo_defaults:
+  response_length: 256
+  temperature: 0.7
+  num_unique_prompts_rollout: 16
+  num_samples_per_prompt_rollout: 4
+  async_mode: true
+  async_steps: 1
+  num_epochs: 1
+  num_mini_batches: 1
+  beta: 0.05
+  clip_lower: 0.2
+  clip_higher: 0.2
+  kl_estimator: kl3
+  pack_length: 512
+  advantage_normalization_type: standard
+  apply_verifiable_reward: true
+  verification_reward: 10.0
+  verifier_strategy: judge
+
+adaptive_rubrics:
+  apply_adaptive_rubric_reward: true
+  use_full_responses_for_adaptive_rubric: true
+  use_rubric_buffer: true
+  max_active_rubrics: 5
+  use_static_rubrics_as_persistent_rubrics: true
+  add_static_rubrics_to_active_rubrics_every_n_steps: 10
+  normalize_rubric_scores: false
+  save_adaptive_rubrics: true
+  cache_adaptive_rubric_data_dir: artifacts/cache/adaptive_rubrics
+
+buffer_policy:
+  add_min_support_count: 2
+  add_min_severity: 0.5
+  merge_similarity_threshold: 0.82
+  decay_per_non_triggered_batch: 0.2
+  retire_after_non_triggered_batches: 3
+  keep_evidence_spans: true
+  score_fields_for_management:
+    - per_rubric_rewards
+    - rubric_scores_by_title
+
+clustering:
+  embedding_model: sentence-transformers/all-mpnet-base-v2
+  n_top_clusters: 8
+  num_levels: 3
+  llm_refinement:
+    preferred_provider_order:
+      - anthropic
+      - openai
+    anthropic_model_env: ANTHROPIC_MODEL
+    default_anthropic_model: claude-3-5-haiku-20241022
+    openai_model_env: OPENAI_MODEL
+    default_openai_model: gpt-4.1-mini
