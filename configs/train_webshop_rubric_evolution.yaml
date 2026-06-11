@@ -1,0 +1,66 @@
+# Top-level training experiment settings for the train/webshop-rubric-evolution branch.
+experiment:
+  name: webshop-rubric-evolution
+  branch: train/webshop-rubric-evolution
+  mode: train
+  bench_size: 128
+  seed: 42
+  output_dir: outputs/webshop-rubric-evolution
+
+imports:
+  external_repos: configs/external_repos.yaml
+  environment: configs/agentgym_webshop.yaml
+  rubric_reward: configs/dr_tulu_rubric.yaml
+
+batch_loop:
+  baseline_batches: 1
+  train_batches: 4
+  heldout_eval_every_n_batches: 1
+  trajectory_store: artifacts/trajectories
+  derived_annotations_dir: artifacts/annotations
+  weakness_pool_path: artifacts/weakness_pool/active_weaknesses.jsonl
+
+weakness_mining:
+  taxonomy:
+    - query_drift
+    - attribute_neglect
+    - premature_purchase
+    - observation_overtrust
+    - navigation_loop
+    - proxy_hacking
+  earliest_decisive_mistake: true
+  require_evidence_span: true
+  cluster_after_each_bench: true
+
+rubric_generation:
+  create_positive_rubrics: true
+  create_negative_rubrics: true
+  max_new_rubrics_per_batch: 5
+  rubric_schema:
+    required_fields:
+      - title
+      - description
+      - weight
+      - polarity
+      - source_weakness_ids
+      - evidence_trajectory_ids
+  weights:
+    positive_default: 1.0
+    negative_default: -0.5
+    severe_negative: -1.0
+
+training_signal_mix:
+  original_reward_weight: 0.7
+  evolved_rubric_reward_weight: 0.3
+  anneal_evolved_weight: true
+  max_evolved_rubric_reward_weight: 0.5
+
+reward_hacking_checks:
+  enabled: true
+  suspicious_patterns:
+    - rubric_score_up_success_down
+    - final_purchase_missing_required_attribute
+    - repeated_template_rationale_without_evidence
+    - action_loop_with_positive_self_critique
+  quarantine_suspicious_rubrics: true
+  require_heldout_confirmation: true

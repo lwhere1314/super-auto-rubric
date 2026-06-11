@@ -31,3 +31,14 @@ signals, and fed back into later runs.
 - `train/webshop-rubric-evolution`: training-based rubric evolution for WebShop.
 - `training-free/webshop-trajecdebug`: training-free trajectory diagnosis and
   rubric rewriting for WebShop.
+
+## Training Branch Setup
+
+On `train/webshop-rubric-evolution`, run:
+
+```sh
+scripts/bootstrap_train_branch.sh
+```
+
+The training branch keeps AgentGym and dr-tulu as untracked local checkouts in
+`external/` and records the replicated settings under `configs/`.

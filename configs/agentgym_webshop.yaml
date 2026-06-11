@@ -1,0 +1,69 @@
+# Settings mirrored from AgentGym's WebShop integration.
+source:
+  repo: agentgym
+  commit: 3ef9235
+  root: external/AgentGym
+  environment_file: external/AgentGym/agentenv-webshop/environment.yml
+  package_file: external/AgentGym/agentenv-webshop/pyproject.toml
+  setup_script: external/AgentGym/agentenv-webshop/setup.sh
+
+runtime:
+  conda_env_name: agentenv-webshop
+  python: "3.8"
+  conda_channels:
+    - conda-forge
+    - defaults
+  conda_dependencies:
+    - python=3.8
+    - faiss-cpu=1.7
+    - openjdk=11
+  editable_packages:
+    - external/AgentGym/agentenv-webshop
+    - external/AgentGym/agentenv
+
+pip:
+  requirements_file: requirements/agentgym-webshop.txt
+  upstream_requirements_file: external/AgentGym/agentenv-webshop/webshop/requirements.txt
+  setup_overrides:
+    - Werkzeug>=2,<3
+    - mkl>=2021,<2022
+    - typing_extensions<4.6.0
+    - gym==0.23.1
+    - en-core-web-lg@https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.3.0/en_core_web_lg-3.3.0-py3-none-any.whl#sha256=6ce19d37dfe5280400f80a5954d41afca10cbc742b97bfcf4b0e452b6eb24273
+
+server:
+  command: webshop --host ${WEBSHOP_HOST:-0.0.0.0} --port ${WEBSHOP_PORT:-36001}
+  base_url: ${WEBSHOP_BASE_URL:-http://127.0.0.1:36001}
+  timeout_seconds: 300
+  max_retries: 5
+  env_cache_size: 8000
+
+webshop_env:
+  gym_id: WebAgentTextEnv-v0
+  observation_mode: text
+  num_products: 1000
+  debug_product_size: null
+  default_product_file: external/AgentGym/agentenv-webshop/webshop/data/items_shuffle_1000.json
+  default_attribute_file: external/AgentGym/agentenv-webshop/webshop/data/items_ins_v2_1000.json
+  default_review_file: external/AgentGym/agentenv-webshop/webshop/data/reviews.json
+  actions:
+    - search[keywords]
+    - click[value]
+
+agent_adapter:
+  supported_action_formats:
+    - react
+    - function_calling
+    - code_as_action
+  default_action_format: react
+  function_names:
+    - search
+    - click
+
+trajectory_capture:
+  save_raw_html: true
+  save_text_observation: true
+  save_available_actions: true
+  save_instruction_text: true
+  save_reward: true
+  save_done: true

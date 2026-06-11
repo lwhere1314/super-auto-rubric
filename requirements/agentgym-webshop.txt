@@ -1,0 +1,30 @@
+# Mirrored from external/AgentGym/agentenv-webshop/webshop/requirements.txt
+# plus setup.sh compatibility overrides.
+beautifulsoup4==4.11.1
+cleantext==1.1.4
+env==0.1.0
+Flask==2.1.2
+gdown
+gradio
+gym==0.23.1
+numpy==1.22.4
+pandas==1.4.2
+pyserini==0.17.0
+pytest
+PyYAML==6.0
+rank_bm25==0.2.2
+requests==2.27.1
+requests_mock
+rich==12.4.4
+scikit_learn==1.1.1
+selenium==4.2.0
+spacy==3.3.0
+thefuzz==0.19.0
+torch==1.11.0
+tqdm==4.64.0
+train==0.0.5
+transformers==4.19.2
+Werkzeug>=2,<3
+mkl>=2021,<2022
+typing_extensions<4.6.0
+en-core-web-lg@https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.3.0/en_core_web_lg-3.3.0-py3-none-any.whl#sha256=6ce19d37dfe5280400f80a5954d41afca10cbc742b97bfcf4b0e452b6eb24273

@@ -1,0 +1,31 @@
+# Pinned external sources for the training branch.
+repos:
+  agentgym:
+    url: https://github.com/WooooDyy/AgentGym.git
+    local_path: external/AgentGym
+    pinned_commit: 3ef9235
+    role: webshop_environment
+    settings_sources:
+      - agentenv-webshop/environment.yml
+      - agentenv-webshop/pyproject.toml
+      - agentenv-webshop/setup.sh
+      - agentenv-webshop/webshop/requirements.txt
+      - agentenv-webshop/agentenv_webshop/environment.py
+      - agentenv/agentenv/envs/webshop.py
+  dr_tulu:
+    url: https://github.com/rlresearch/dr-tulu.git
+    local_path: external/dr-tulu
+    pinned_commit: 9d7b037
+    role: rubric_reward_and_buffer_reference
+    settings_sources:
+      - rl/open-instruct/pyproject.toml
+      - rl/open-instruct/open_instruct/grpo_fast.py
+      - rl/open-instruct/open_instruct/search_rewards/longform_rubric_rewards.py
+      - rl/open-instruct/open_instruct/search_rewards/utils/rubric_utils.py
+      - rl/open-instruct/open_instruct/search_rewards/analysis/hierarchical_rubric_clustering.py
+      - rl/open-instruct/configs/judge_configs/general_verifier_judge.yaml
+
+sync_policy:
+  keep_external_checkouts_untracked: true
+  refresh_command: scripts/bootstrap_train_branch.sh
+  update_pins_only_after_manual_review: true

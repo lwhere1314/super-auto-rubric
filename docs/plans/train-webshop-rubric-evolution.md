@@ -27,6 +27,15 @@ training batches beyond a static rubric or vanilla reward signal.
   rubrics.
 - `evals`: held-out success, rubric agreement, and reward hacking checks.
 
+## Settings Entry Points
+
+- `configs/external_repos.yaml`: pinned AgentGym and dr-tulu checkouts.
+- `configs/agentgym_webshop.yaml`: replicated WebShop runtime, server, data, and
+  action settings.
+- `configs/dr_tulu_rubric.yaml`: replicated judge, reward, GRPO, clustering, and
+  adaptive rubric settings.
+- `configs/train_webshop_rubric_evolution.yaml`: top-level experiment loop.
+
 ## Rubric Buffer Entry
 
 Each active rubric should keep:
