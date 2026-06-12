@@ -222,6 +222,9 @@ class InContextRubricPolicy:
         rubrics: list[RubricEntry],
         feedback_hints: list[FeedbackHint] | None = None,
         include_recent_actions: bool = True,
+        state_aware_feedback: bool = False,
+        state_feedback_limit: int | None = None,
+        purchase_priority: bool = False,
         max_observation_chars: int = 4000,
     ) -> None:
         self.chat_client = chat_client
@@ -229,6 +232,9 @@ class InContextRubricPolicy:
         self.rubrics = rubrics
         self.feedback_hints = feedback_hints or []
         self.include_recent_actions = include_recent_actions
+        self.state_aware_feedback = state_aware_feedback
+        self.state_feedback_limit = state_feedback_limit
+        self.purchase_priority = purchase_priority
         self.max_observation_chars = max_observation_chars
         self.fallback = ScriptedWebShopPolicy()
         self.recent_actions: list[str] = []
@@ -311,12 +317,14 @@ class InContextRubricPolicy:
             f"{rubric.natural_language_rule}"
             for rubric in self.rubrics
         ) or "- No active critic rubrics."
+        clickables = [str(item) for item in available_actions.get("clickables", [])]
+        page_state = _page_state(observation, available_actions)
+        selected_feedback_hints = self._select_feedback_hints(page_state)
         feedback_text = "\n".join(
             f"- {hint.feedback_id}: trigger={hint.trigger} "
             f"avoid={hint.avoid_actions} lesson={hint.lesson} try_instead={hint.suggested_strategy}"
-            for hint in self.feedback_hints
+            for hint in selected_feedback_hints
         ) or "- No prior meta-harness feedback."
-        clickables = [str(item) for item in available_actions.get("clickables", [])]
         allowed_actions = {
             "has_search_bar": bool(available_actions.get("has_search_bar")),
             "clickables": clickables[:80],
@@ -335,6 +343,12 @@ class InContextRubricPolicy:
             if self.include_recent_actions
             else "\n\n"
         )
+        purchase_guidance = _purchase_priority_guidance(
+            page_state,
+            available_actions,
+            self.recent_actions,
+            enabled=self.purchase_priority,
+        )
         return [
             {
                 "role": "system",
@@ -352,10 +366,12 @@ class InContextRubricPolicy:
                 "content": (
                     f"Instruction:\n{instruction_text}\n\n"
                     f"Observation:\n{_truncate(observation, self.max_observation_chars)}\n\n"
+                    f"Detected page state: {page_state}\n\n"
                     f"Available actions JSON:\n{json.dumps(allowed_actions, ensure_ascii=True)}\n\n"
                     f"Recent actions JSON:\n{json.dumps(recent_actions, ensure_ascii=True)}\n\n"
                     f"Active critic rubrics:\n{rubrics_text}\n\n"
                     f"Meta-harness feedback from prior low-reward attempts:\n{feedback_text}\n\n"
+                    f"{purchase_guidance}"
                     "Use the feedback as counterfactual guidance: if an action pattern was penalized before, "
                     "choose a different search path or inspect a plausible product instead of repeating it. "
                     + feedback_guidance
@@ -366,6 +382,21 @@ class InContextRubricPolicy:
                 ),
             },
         ]
+
+    def _select_feedback_hints(self, page_state: str) -> list[FeedbackHint]:
+        if not self.state_aware_feedback:
+            return self.feedback_hints
+
+        ranked = sorted(
+            self.feedback_hints,
+            key=lambda hint: (_feedback_relevance_score(hint, page_state), hint.severity),
+            reverse=True,
+        )
+        relevant = [hint for hint in ranked if _feedback_relevance_score(hint, page_state) > 0]
+        selected = relevant or ranked
+        if self.state_feedback_limit is None:
+            return selected
+        return selected[: self.state_feedback_limit]
 
 
 class CriticRubricJudge:
@@ -605,6 +636,139 @@ def _canonical_action_pattern(actions: list[str]) -> str:
         compact = re.sub(r"\[[^\]]+\]", "[...]", compact) if compact.startswith("search[") else compact
         normalized.append(compact)
     return " -> ".join(normalized)
+
+
+def _page_state(observation: str, available_actions: dict[str, Any]) -> str:
+    clickables = {str(item).strip().lower() for item in available_actions.get("clickables", [])}
+    observation_lower = observation.lower()
+    if bool(available_actions.get("has_search_bar")):
+        return "search_page"
+    if "buy now" in clickables:
+        return "product_page"
+    if "< prev" in clickables and len(clickables) <= 3:
+        return "detail_page"
+    if any(re.fullmatch(r"b[0-9a-z]{9}", item) for item in clickables):
+        return "results_page"
+    if "page " in observation_lower and "total results" in observation_lower:
+        return "results_page"
+    return "unknown_page"
+
+
+def _feedback_relevance_score(hint: FeedbackHint, page_state: str) -> float:
+    text = " ".join(
+        [
+            hint.feedback_id,
+            " ".join(hint.source_rubric_ids),
+            hint.trigger,
+            hint.lesson,
+            hint.suggested_strategy,
+            " ".join(hint.avoid_actions),
+        ]
+    ).lower()
+    score = float(hint.severity)
+    desired_keywords = {
+        "search_page": (
+            "plan",
+            "constraint",
+            "query",
+            "search",
+            "inefficient",
+            "hallucination",
+            "no relevant",
+            "repeated",
+        ),
+        "results_page": (
+            "memory",
+            "hallucination",
+            "visible candidate",
+            "relevant products",
+            "inspect",
+            "plausible product",
+            "next >",
+        ),
+        "product_page": (
+            "progress_misjudge",
+            "buy now",
+            "purchase",
+            "option",
+            "selected",
+            "over-exploring",
+            "features",
+            "< prev",
+        ),
+        "detail_page": (
+            "progress_misjudge",
+            "buy now",
+            "purchase",
+            "features",
+            "< prev",
+            "back to search",
+            "over_simplification",
+        ),
+        "unknown_page": (
+            "purchase",
+            "repeated",
+            "constraint",
+            "plausible",
+        ),
+    }
+    for keyword in desired_keywords.get(page_state, desired_keywords["unknown_page"]):
+        if keyword in text:
+            score += 1.0
+    return score
+
+
+def _purchase_priority_guidance(
+    page_state: str,
+    available_actions: dict[str, Any],
+    recent_actions: list[str],
+    *,
+    enabled: bool,
+) -> str:
+    if not enabled:
+        return ""
+    clickables = {str(item).strip().lower() for item in available_actions.get("clickables", [])}
+    if "buy now" not in clickables:
+        return (
+            "Purchase priority: if this is a product page, select required size/color/style options before "
+            "opening optional details. Avoid leaving a plausible product page unless a hard constraint is impossible.\n\n"
+        )
+
+    option_like_actions = [
+        action for action in recent_actions[-4:]
+        if _is_recent_option_selection(action)
+    ]
+    if page_state == "product_page" and option_like_actions:
+        return (
+            "Purchase priority: Buy Now is visible and recent actions selected product options. "
+            "Prefer `click[buy now]` over `click[features]`, `click[description]`, `click[reviews]`, "
+            "`click[< prev]`, or `click[back to search]` unless a hard user constraint is explicitly contradicted.\n\n"
+        )
+    return (
+        "Purchase priority: Buy Now is visible. If the current product already appears to satisfy the hard "
+        "constraints, choose `click[buy now]`; only inspect details when a required constraint is still unknown.\n\n"
+    )
+
+
+def _is_recent_option_selection(action: str) -> bool:
+    match = re.fullmatch(r"click\[(.*)\]", action.strip().lower())
+    if not match:
+        return False
+    label = match.group(1).strip()
+    if label in {
+        "buy now",
+        "features",
+        "description",
+        "reviews",
+        "details",
+        "back to search",
+        "< prev",
+        "next >",
+    }:
+        return False
+    if re.fullmatch(r"b[0-9a-z]{9}", label):
+        return False
+    return True
 
 
 def _truncate(text: str, limit: int) -> str:

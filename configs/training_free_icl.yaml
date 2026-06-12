@@ -11,12 +11,15 @@ webshop:
   base_url: http://127.0.0.1:36001
   active_rubrics: artifacts/rubrics/webshop-agentdebug-plus-baseline-active.jsonl
   feedback_memory: artifacts/feedback/webshop-agentdebug-plus-meta-feedback.jsonl
-  output_dir: artifacts/trajectories/heldout100-agentdebug-feedback-history
+  output_dir: artifacts/trajectories/heldout100-agentdebug-state-aware-only
   episodes: 100
   max_steps: 6
   session_offset: 100
   rubric_limit: 15
   feedback_limit: 22
+  state_aware_feedback: true
+  state_feedback_limit: 8
+  purchase_priority: false
   api_concurrency: 8
 
 reward:
@@ -41,4 +44,6 @@ meta_harness:
   actor_context:
     include_recent_actions: true
     include_feedback_memory: true
+    include_state_aware_feedback: true
+    include_purchase_priority: false
     purpose: Tell the small actor which action patterns previously failed so it chooses a different search or purchase path.

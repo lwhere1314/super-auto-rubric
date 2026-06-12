@@ -152,6 +152,51 @@ class TrainingFreeICLTest(unittest.TestCase):
         self.assertIn("feedback_test", prompt)
         self.assertIn("Repeating next got low reward", prompt)
 
+    def test_state_aware_feedback_selects_product_page_hints(self):
+        policy = InContextRubricPolicy(
+            chat_client=FakeChatClient([]),
+            actor_model="actor",
+            rubrics=[rubric_entry()],
+            feedback_hints=[
+                FeedbackHint(
+                    feedback_id="agentdebug_plan_inefficient_plan",
+                    source_trajectory_id="traj_plan",
+                    source_rubric_ids=["agentdebug:plan.inefficient_plan"],
+                    trigger="Repeated search query.",
+                    avoid_actions=["search[same query]"],
+                    lesson="Near-duplicate searches waste the budget.",
+                    suggested_strategy="Use a better search query.",
+                    severity=1.0,
+                ),
+                FeedbackHint(
+                    feedback_id="agentdebug_reflection_progress_misjudge",
+                    source_trajectory_id="traj_product",
+                    source_rubric_ids=["agentdebug:reflection.progress_misjudge"],
+                    trigger="Agent over-explored after finding a plausible product.",
+                    avoid_actions=["click[features]", "click[< prev]"],
+                    lesson="Over-exploring after finding a product blocks purchase.",
+                    suggested_strategy="Select required options and buy now.",
+                    severity=0.8,
+                ),
+            ],
+            state_aware_feedback=True,
+            state_feedback_limit=1,
+            purchase_priority=True,
+        )
+
+        policy.recent_actions = ["click[medium]", "click[red]"]
+        messages = policy._messages(
+            "Product page [SEP] Price: $20 [SEP] Features [SEP] Buy Now",
+            {"has_search_bar": False, "clickables": ["red", "medium", "features", "buy now"]},
+            "Find a red medium shirt.",
+        )
+        prompt = "\n".join(message["content"] for message in messages)
+
+        self.assertIn("Detected page state: product_page", prompt)
+        self.assertIn("agentdebug_reflection_progress_misjudge", prompt)
+        self.assertNotIn("agentdebug_plan_inefficient_plan", prompt)
+        self.assertIn("Prefer `click[buy now]`", prompt)
+
     def test_training_free_reward_combines_task_validity_and_critic_scores(self):
         rubric = rubric_entry()
         actor_responses = [

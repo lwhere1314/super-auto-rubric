@@ -365,3 +365,67 @@ Recommended next change:
 - Add a lightweight product-page validator: if required options are selected
   and `Buy Now` is visible, prefer buying unless a hard constraint is still
   explicitly unknown.
+
+### State-Aware Feedback Ablation
+
+The next ablation tested whether feedback should be selected by the current
+WebShop page state instead of injecting the full feedback memory every step.
+The policy class now supports:
+
+- `state_aware_feedback`: rank feedback hints by detected page state.
+- `state_feedback_limit`: cap injected hints per step.
+- `purchase_priority`: optional product-page guidance that prefers `Buy Now`
+  after required options appear selected.
+
+Two extra held-out runs used the same sessions `100..199`:
+
+- State-aware only:
+  `artifacts/trajectories/heldout100-agentdebug-state-aware-only`
+- State-aware plus purchase priority:
+  `artifacts/trajectories/heldout100-agentdebug-state-aware-feedback`
+
+Four-condition summary:
+
+| Condition | Success | Avg Task Reward | Avg Critic Sum | Avg Combined | Buy Episode Rate | Partial Reward Rate | Repeated Action Rate |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Rubrics + recent actions | `0.17` | `0.222` | `-2.641` | `-1.419` | `0.25` | `0.08` | `0.078` |
+| Full feedback + recent actions | `0.19` | `0.280` | `-1.424` | `-0.144` | `0.35` | `0.15` | `0.031` |
+| State-aware feedback | `0.21` | `0.350` | `-0.537` | `0.813` | `0.44` | `0.22` | `0.047` |
+| State-aware + purchase priority | `0.17` | `0.334` | `-1.419` | `-0.085` | `0.44` | `0.26` | `0.055` |
+
+Paired against the rubrics-only baseline, state-aware feedback produced:
+
+- Average task reward delta: `+0.128`; bootstrap 95% CI
+  `[+0.045, +0.210]`.
+- Success delta: `+0.04`; bootstrap 95% CI `[-0.03, +0.11]`.
+- Critic sum delta: `+2.104`.
+- Repeated action rate delta: `-0.032`.
+- Task reward improved on `23` sessions, worsened on `8`, unchanged on `69`.
+- Success was gained on `9` sessions and lost on `5`.
+
+Interpretation:
+
+- The reward-feedback design now has stronger evidence for average task reward:
+  the paired bootstrap interval against baseline is positive for state-aware
+  feedback.
+- Success rate is still not statistically decisive, but it moved in the right
+  direction for state-aware feedback.
+- The main gain comes from selecting relevant feedback by page state, not from
+  globally pushing `Buy Now`.
+- `purchase_priority` increased buy and partial rates, but did not improve
+  success. It likely pushes some trajectories into premature or partially
+  correct purchases.
+- State-aware feedback is the current best training-free setting: it reduces
+  repeated actions, increases product/option/buy behavior, and gives the
+  highest average task and combined reward among the four conditions.
+
+Recommended next change:
+
+- Keep `state_aware_feedback=true` and `purchase_priority=false` as the default
+  training-free setting.
+- Replace the soft purchase-priority prompt with a stricter verifier that only
+  encourages `Buy Now` after the current product page exposes selected options
+  matching instruction constraints.
+- Mine regressions where state-aware feedback still opens `features`, `< prev`,
+  or `description` after selecting options, then add a targeted
+  product-page-completion feedback type rather than a broad Buy Now rule.

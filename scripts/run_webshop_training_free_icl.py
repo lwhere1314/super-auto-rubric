@@ -45,6 +45,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rubric-limit", type=int, default=5)
     parser.add_argument("--feedback-limit", type=int, default=8)
     parser.add_argument(
+        "--state-aware-feedback",
+        action="store_true",
+        help="Select a smaller feedback subset based on the current WebShop page state.",
+    )
+    parser.add_argument(
+        "--state-feedback-limit",
+        type=int,
+        default=8,
+        help="Maximum feedback hints injected per step when --state-aware-feedback is enabled.",
+    )
+    parser.add_argument(
+        "--purchase-priority",
+        action="store_true",
+        help="Add product-page guidance that prefers Buy Now after required options are selected.",
+    )
+    parser.add_argument(
         "--disable-recent-actions",
         action="store_true",
         help="Ablation: do not inject recent action history into the actor prompt.",
@@ -91,6 +107,9 @@ def main() -> int:
             rubrics=rubrics,
             feedback_hints=feedback_hints,
             include_recent_actions=not args.disable_recent_actions,
+            state_aware_feedback=args.state_aware_feedback,
+            state_feedback_limit=args.state_feedback_limit,
+            purchase_priority=args.purchase_priority,
         )
         judge = CriticRubricJudge(
             chat_client=chat_client,
