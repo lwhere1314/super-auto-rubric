@@ -26,6 +26,69 @@ signals, and fed back into later runs.
 - Reward hacking mitigation references: RLER negative rubrics and CHERRL/RHDA
   style detection.
 
+## Repository Layout
+
+```text
+.
+├── configs/                         # Reproducible experiment/config snapshots.
+├── docs/
+│   ├── plans/                       # Design notes, todo lists, and experiment plans.
+│   └── setup/                       # Machine-specific setup notes.
+├── experiments/
+│   └── webshop_tulu_critic_v1/      # Current 4x4090 WebShop Tulu critic-error RL snapshot.
+│       ├── data/                    # Train/eval prompt JSONL files used by the v1 run.
+│       ├── logs/                    # Baseline/critic logs, summaries, rubric pool, metrics.
+│       ├── patches/                 # Patched DR-Tulu/Open-Instruct source files.
+│       ├── scripts/                 # Launch/watchdog/monitor scripts for the GPU server.
+│       └── traces/                  # Complete rollout trace snapshots.
+├── requirements/                    # Python dependency pins for local WebShop tooling.
+├── scripts/                         # Local data prep, smoke tests, mining, and run helpers.
+├── src/super_auto_rubric/           # Library code for trajectories, rubrics, clients, policies.
+├── tests/                           # Unit tests for local, non-CUDA components.
+└── external/                        # Ignored local checkouts of AgentGym / DR-Tulu.
+```
+
+Ignored runtime directories:
+
+```text
+artifacts/       # Generated local/remote experiment artifacts.
+outputs/         # Model outputs and checkpoint directories.
+runs/            # Ad-hoc run outputs.
+wandb/           # WandB local cache.
+external/        # Large third-party checkouts.
+```
+
+## Current Experiment Snapshot
+
+The most important current artifact is:
+
+```text
+experiments/webshop_tulu_critic_v1/
+```
+
+Start there if you want to reproduce or extend the first WebShop RL experiment.
+Its README documents:
+
+- the exact reward implementation entry point;
+- how the patched DR-Tulu files are applied;
+- how the 4-card baseline and critic-error runs are launched;
+- where the full rollout traces live;
+- which logs show zero-advantage baseline behavior versus critic-error
+  advantage separation;
+- how the dynamic rubric pool is represented.
+
+The key reward code for v1 is:
+
+```text
+experiments/webshop_tulu_critic_v1/patches/open_instruct/search_rewards/webshop_critic_error.py
+```
+
+The GRPO integration point is:
+
+```text
+experiments/webshop_tulu_critic_v1/patches/open_instruct/grpo_fast.py
+```
+
 ## Branches
 
 - `train/webshop-rubric-evolution`: training-based rubric evolution for WebShop.
@@ -58,3 +121,22 @@ PYTHONPATH=src python3 -m unittest discover -s tests -v
 The current Mac path is intentionally environment-only: it can run WebShop
 smoke tests, trajectory collection, weakness mining, and rubric-buffer updates.
 Actual model training should move to the Linux/CUDA 4090 machine.
+
+## Collaboration Notes
+
+- Keep third-party repos under `external/`; do not commit those checkouts.
+- Put reusable experiment snapshots under `experiments/<name>/` with a local
+  README, scripts, data manifest, and evidence logs.
+- Put reusable library code under `src/super_auto_rubric/`; keep one-off remote
+  run outputs in ignored `artifacts/` or `outputs/`.
+- Do not commit API keys, model weights, checkpoints, or private `.env` files.
+- For local checks, prefer:
+
+```sh
+PYTHONPATH=src python3 -m unittest discover -s tests -v
+```
+
+- For WebShop/Tulu GPU experiments, update the experiment README with the reward
+  entry point, launch command, data files, trace files, and log evidence so other
+  collaborators can audit the result without needing access to the original GPU
+  session.

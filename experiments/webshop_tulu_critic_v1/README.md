@@ -27,6 +27,10 @@ weights are not included.
 - `scripts/monitor_v5_agentgym.sh`
   - Non-destructive monitor for process liveness, trace freshness, GPU status,
     and WebShop health.
+- `scripts/export_critic_step_scores.py`
+  - Offline scorer for full traces. Use this to reconstruct per-rollout,
+    per-rubric Kimi scores when a run was started before raw rubric scores were
+    persisted online.
 - `data/*.jsonl`
   - WebShop train/eval prompt files used by the v1 runs.
 - `traces/*.jsonl`
@@ -112,6 +116,22 @@ the weakness pool, and now writes per-step raw rubric scoring to:
 The first already-running v1 process did not persist this raw per-rollout
 per-rubric score file; it only printed aggregate metrics and updated the pool.
 The checked-in code includes the logger for subsequent runs.
+
+To backfill raw rubric scores for an existing trace, run the offline scorer
+inside the DR-Tulu/Open-Instruct environment:
+
+```bash
+python experiments/webshop_tulu_critic_v1/scripts/export_critic_step_scores.py \
+  --open-instruct-root /home/u2021110842/super-auto-rubric/external/dr-tulu/rl/open-instruct \
+  --trace experiments/webshop_tulu_critic_v1/traces/critic_v1_36002_rollout_trace.snapshot.jsonl \
+  --rubric-pool experiments/webshop_tulu_critic_v1/logs/critic_error_pool_8192.step64.jsonl \
+  --output experiments/webshop_tulu_critic_v1/logs/critic_v1_step_scores.backfill.jsonl \
+  --steps 1,64-66 \
+  --max-workers 32
+```
+
+Omit `--steps` to score the whole trace. This can be expensive because it calls
+the critic judge for each `(rollout, active rubric)` pair.
 
 ## Evidence Logs And Traces
 
