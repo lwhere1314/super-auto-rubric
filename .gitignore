@@ -1,5 +1,6 @@
 # Local dependency checkouts.
 external/
+.remote_edit/
 
 # Python and tooling caches.
 __pycache__/
