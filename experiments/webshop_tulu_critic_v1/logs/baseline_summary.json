@@ -1,0 +1,69 @@
+{
+  "label": "baseline_pre_fix_36001_zero_advantage",
+  "log_file": "logs/baseline_pre_fix_36001_zero_advantage.log",
+  "metric_box_count": 0,
+  "no_responses_to_evaluate_count": 88,
+  "note": "Diagnostic pre-fix baseline: used the old 127.0.0.1:36001 WebShop endpoint, so many rollouts hit HTTP 502. Retained as a zero-advantage/skip-optimization failure log, not as the final fair baseline.",
+  "skip_optimization_count": 88,
+  "trace": {
+    "file": "traces/baseline_pre_fix_36001_rollout_trace.jsonl",
+    "finish_counts_top": [
+      [
+        "env_error",
+        1592
+      ],
+      [
+        "length",
+        1205
+      ],
+      [
+        "stop",
+        15
+      ],
+      [
+        "invalid_action",
+        4
+      ]
+    ],
+    "latest_step": 88,
+    "num_calls_mean_last64": 0.0,
+    "rows": 2816,
+    "score_counts_top": [
+      [
+        0.0,
+        2816
+      ]
+    ],
+    "score_max_last64": 0.0,
+    "score_mean": 0.0,
+    "score_mean_last64": 0.0,
+    "score_min_last64": 0.0,
+    "score_positive": 0,
+    "tool_error_counts_top": [
+      [
+        "HTTPError: 502 Server Error: Bad Gateway for url: http://127.0.0.1:36001/create",
+        1524
+      ],
+      [
+        "",
+        1220
+      ],
+      [
+        "ReadTimeout: HTTPConnectionPool(host='127.0.0.1', port=7890): Read timed out. (read timeout=15.0)",
+        39
+      ],
+      [
+        "HTTPError: 500 Server Error: Internal Server Error for url: http://127.0.0.1:36001/create",
+        27
+      ],
+      [
+        "no_valid_webshop_action",
+        4
+      ],
+      [
+        "HTTPError: 502 Server Error: Bad Gateway for url: http://127.0.0.1:36001/step",
+        2
+      ]
+    ]
+  }
+}

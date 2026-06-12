@@ -1,0 +1,104 @@
+{
+  "active_rubrics_by_step_file": "logs/critic_v1_active_rubrics_by_step.jsonl",
+  "label": "critic_v1_36002_advantage",
+  "latest_metric_step": 64,
+  "log_file": "logs/critic_v1_36002_advantage.log",
+  "metric_box_count": 64,
+  "note": "Critic-error v1 run: corrected 127.0.0.1:36002 WebShop endpoint and dynamic Kimi-generated critic-error rubrics. Demonstrates non-zero GRPO advantages and no skip optimization events in logged metric steps.",
+  "rubric_pool_file": "logs/critic_error_pool_8192.step64.jsonl",
+  "skip_optimization_count": 0,
+  "step_metrics_file": "logs/critic_v1_step_metrics.jsonl",
+  "trace": {
+    "file": "traces/critic_v1_36002_rollout_trace.snapshot.jsonl",
+    "finish_counts_top": [
+      [
+        "length",
+        2030
+      ],
+      [
+        "stop",
+        44
+      ],
+      [
+        "env_error",
+        34
+      ],
+      [
+        "invalid_action",
+        4
+      ]
+    ],
+    "latest_step": 66,
+    "num_calls_mean_last64": 6.625,
+    "rows": 2112,
+    "score_counts_top": [
+      [
+        -2.282608695652174,
+        649
+      ],
+      [
+        -1.8260869565217395,
+        247
+      ],
+      [
+        -2.815217391304348,
+        174
+      ],
+      [
+        -2.967391304347826,
+        171
+      ],
+      [
+        -1.9173913043478266,
+        147
+      ],
+      [
+        -1.871739130434783,
+        109
+      ],
+      [
+        -2.3586956521739135,
+        61
+      ],
+      [
+        -2.3358695652173918,
+        55
+      ],
+      [
+        -2.1842105263157894,
+        49
+      ],
+      [
+        -3.5,
+        43
+      ],
+      [
+        -2.4500000000000006,
+        29
+      ],
+      [
+        -2.510869565217391,
+        29
+      ]
+    ],
+    "score_max_last64": -0.073684,
+    "score_mean": -2.257732,
+    "score_mean_last64": -2.251727,
+    "score_min_last64": -3.026316,
+    "score_positive": 0,
+    "tool_error_counts_top": [
+      [
+        "",
+        2074
+      ],
+      [
+        "ReadTimeout: HTTPConnectionPool(host='127.0.0.1', port=36002): Read timed out. (read timeout=15.0)",
+        34
+      ],
+      [
+        "no_valid_webshop_action",
+        4
+      ]
+    ]
+  }
+}

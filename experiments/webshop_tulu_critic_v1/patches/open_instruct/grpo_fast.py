@@ -105,6 +105,7 @@ from open_instruct.ground_truth_utils import (
     is_a_good_rl_rag_response,
 )
 from open_instruct.search_rewards.webshop_critic_error import (
+    active_weaknesses,
     disable_critic_error_pool_for_ground_truths,
     inject_active_critic_rubrics_into_ground_truths,
     mine_and_update_critic_error_pool,
@@ -3143,6 +3144,37 @@ if __name__ == "__main__":
                     else:
                         # Skip non-numeric values (like dictionaries) or log them differently
                         print(f"Skipping non-numeric log_values key '{key}' with value types: {[type(v).__name__ for v in value[:3]]}")  # Show first 3 types for debugging
+
+                if args.critic_error_enabled and is_training and training_step is not None and args.critic_error_pool_path:
+                    score_log_path = Path(args.critic_error_pool_path).with_suffix(
+                        Path(args.critic_error_pool_path).suffix + ".step_scores.jsonl"
+                    )
+                    score_log_path.parent.mkdir(parents=True, exist_ok=True)
+                    critic_scores = log_values.get("critic_error_scores_by_id", []) or []
+                    critic_evidence = log_values.get("critic_error_evidence_by_id", []) or []
+                    active_rubrics = active_weaknesses(
+                        args.critic_error_pool_path,
+                        args.critic_error_max_active_weaknesses,
+                    )
+                    with score_log_path.open("a", encoding="utf-8") as f:
+                        row = {
+                            "training_step": int(training_step),
+                            "active_rubrics": active_rubrics,
+                            "rollouts": [
+                                {
+                                    "index": int(i),
+                                    "reward": float(verifiable_rewards[i]),
+                                    "score_after_reward": float(scores[i]),
+                                    "finish_reason": finish_reasons[i] if i < len(finish_reasons) else "",
+                                    "num_calls": int(num_calls[i]) if i < len(num_calls) else 0,
+                                    "tool_error": str(tool_errors[i]) if i < len(tool_errors) else "",
+                                    "critic_scores_by_id": critic_scores[i] if i < len(critic_scores) else {},
+                                    "critic_evidence_by_id": critic_evidence[i] if i < len(critic_evidence) else {},
+                                }
+                                for i in range(len(verifiable_rewards))
+                            ],
+                        }
+                        f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
                 if args.critic_error_enabled and is_training and training_step is not None and args.critic_error_pool_path:
                     critic_retire_stats = update_critic_error_pool_from_logs(
